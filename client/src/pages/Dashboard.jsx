@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { Activity, ArrowRight, Zap, Server } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card.jsx';
 import { Button } from '../components/ui/button.jsx';
+import { Helmet } from 'react-helmet-async';
 
 export function Dashboard() {
   const [health, setHealth] = useState({ status: 'unknown', uptimeSeconds: 0, error: null });
@@ -49,6 +50,14 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-background max-w-7xl mx-auto px-4">
       {/* Header */}
+      <Helmet>
+        <title>Rate Limiter | Dashboard</title>
+
+        <meta
+          name="description"
+          content="Monitor Redis-based distributed rate limiter in real time."
+        />
+      </Helmet>
       <main className="container mx-auto px-4 py-12">
         {/* Quick Stats */}
         <div className="mb-12">
@@ -66,10 +75,10 @@ export function Dashboard() {
                   <div className="flex items-center gap-3">
                     <span
                       className={`inline-block h-3 w-3 rounded-full ${health.status === 'ok'
-                          ? 'bg-emerald-500'
-                          : health.status === 'unknown'
-                            ? 'bg-amber-400'
-                            : 'bg-red-500'
+                        ? 'bg-emerald-500'
+                        : health.status === 'unknown'
+                          ? 'bg-amber-400'
+                          : 'bg-red-500'
                         }`}
                     />
                     <span className="text-sm">

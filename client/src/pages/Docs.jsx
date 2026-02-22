@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import { DocsSidebar } from '../components/docs/DocsSidebar.jsx';
 import { DocsContent } from '../components/docs/DocsContent.jsx';
+import { Helmet } from 'react-helmet-async';
 
 export function Docs() {
   const [activeSection, setActiveSection] = useState('overview');
@@ -49,7 +50,15 @@ export function Docs() {
 
   return (
     <div className="min-h-screen bg-background max-w-7xl mx-auto px-4">
+<Helmet>
+        <title>Rate Limiter | Docs</title>
 
+        <meta
+          keywords="rate limiter, system-design ,simulator, load testing, real-time monitoring"
+          name="description"
+          content="Monitor Redis-based distributed rate limiter in real time."
+        />
+      </Helmet>
       <main className="container mx-auto px-4 py-8">
         <div className="flex gap-8">
           <DocsSidebar

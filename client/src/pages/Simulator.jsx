@@ -11,12 +11,21 @@ import { SimulatorCharts } from '../components/simulator/SimulatorCharts.jsx';
 import { SimulatorLogs } from '../components/simulator/SimulatorLogs.jsx';
 import { SimulatorStatus } from '../components/simulator/SimulatorStatus.jsx';
 import { SocketSimulator } from '../components/simulator/SocketSimulator.jsx';
+import { Helmet } from 'react-helmet-async';
 
 export function Simulator() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
+      <Helmet>
+        <title>Rate Limiter | Simulator</title>
 
+        <meta
+          keywords="rate limiter, system-design ,simulator, load testing, real-time monitoring"
+          name="description"
+          content="Monitor Redis-based distributed rate limiter in real time."
+        />
+      </Helmet>
       <main className="container max-w-7xl mx-auto px-4 py-8 space-y-8">
         {/* Controls Section */}
         <section>

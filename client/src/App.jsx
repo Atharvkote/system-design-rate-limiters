@@ -11,6 +11,7 @@ import { Docs } from './pages/Docs.jsx';
 import { useSocket } from './hooks/useSocket.js';
 import Navbar from './components/layout/navbar.jsx';
 import Footer from './components/layout/footer.jsx';
+import { Helmet } from 'react-helmet-async';
 
 function AppContent() {
   useSocket();
@@ -30,6 +31,14 @@ export default function App() {
   const pathname = useLocation().pathname;
   return (
     <>
+      <Helmet>
+        <title>Rate Limiter | Home</title>
+
+        <meta
+          name="description"
+          content="Monitor Redis-based distributed rate limiter in real time."
+        />
+      </Helmet>
       {noNavbarRoutes.includes(pathname) ? null : (<Navbar />)}
       <AppContent />
       {noFooterRoutes.includes(pathname) ? null : (<Footer />)}
