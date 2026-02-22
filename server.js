@@ -39,10 +39,26 @@ import { socketioLogger, redisLogger } from "./utils/logger.js";
 
 // Database configs
 import { connectDB, disconnectDB } from "./configs/mongodb.config.js";
-
-// Example placeholder routers (uncomment/replace with your own routers)
-// import authRouter from "./routes/auth.routes.js";
-// import apiRouter from "./routes/api.routes.js";
+// Auth: attach req.user from x-user-id (before routes, for rate limiting)
+import authMiddleware from "./middlewares/auth.middleware.js";
+// User-based rate limiters and limit config
+import { createUserLimiter } from "./middlewares/userRateLimiter.js";
+import {
+  LIMIT_READ,
+  LIMIT_WRITE,
+  LIMIT_AUTH,
+  LIMIT_UPLOAD,
+  LIMIT_HEAVY,
+  LIMIT_PUBLIC,
+} from "./configs/rateLimit.config.js";
+// Route factories (accept injected limiters)
+import { createUserRoutes } from "./routes/user.routes.js";
+import { createResourceRoutes } from "./routes/resource.routes.js";
+import { createAuthRoutes } from "./routes/auth.routes.js";
+import { createPublicRoutes } from "./routes/public.routes.js";
+import { createUploadRoutes } from "./routes/upload.routes.js";
+// Socket.IO: user attachment + per-event rate limiting
+import { initializeSocketHandlers } from "./socket/connectionHandler.js";
 
 // Connect MongoDB
 await connectDB();
@@ -120,16 +136,12 @@ app.use(
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:9090",
-  // Add your allowed production origins here
-  // "https://your-production-domain.com",
 ];
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, or same-origin requests)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
-        // `true` signals the cors middleware to reflect the request origin
         return callback(null, true);
       }
       return callback(new Error("Not allowed by CORS"));
@@ -138,6 +150,8 @@ app.use(
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
+
+app.use(authMiddleware);
 
 // Rate limiters (only if Redis is available)
 let rateLimiter = null;
@@ -249,19 +263,26 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Attach your routers here (examples commented)
-// app.use("/api/v1/auth", authRouter);
-// app.use("/api/v1", apiRouter);
+// User-based rate limiters (fail open when Redis unavailable)
+const readLimiter = createUserLimiter(redisClient, LIMIT_READ);
+const writeLimiter = createUserLimiter(redisClient, LIMIT_WRITE);
+const authLimiterUser = createUserLimiter(redisClient, LIMIT_AUTH);
+const uploadLimiter = createUserLimiter(redisClient, LIMIT_UPLOAD);
+const heavyLimiter = createUserLimiter(redisClient, LIMIT_HEAVY);
+const publicLimiter = createUserLimiter(redisClient, LIMIT_PUBLIC);
 
-// If you want to restrict certain sensitive endpoints with the limiter:
-// app.use("/api/v1/sensitive", sensitiveEndpointsLimiter, sensitiveRouter);
+// Mount route modules with injected limiters
+app.use("/api/v1/users", createUserRoutes({ readLimiter, writeLimiter }));
+app.use("/api/v1/resources", createResourceRoutes({ readLimiter, writeLimiter, heavyLimiter }));
+app.use("/api/v1/auth", createAuthRoutes({ authLimiter: authLimiterUser }));
+app.use("/api/v1/public", createPublicRoutes({ publicLimiter }));
+app.use("/api/v1", createUploadRoutes({ uploadLimiter }));
 
-// Global error handler middleware (must be after all routes)
+
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
   logger.error(`Unhandled error: ${err.message}`, { stack: err.stack });
 
-  // Don't send error details in production
   res.status(err.status || 500).json({
     success: false,
     message: err.message || "Internal Server Error",
@@ -277,7 +298,6 @@ app.use((req, res) => {
   });
 });
 
-// --------------------- SOCKET.IO ---------------------
 /**
  * @socketio Initialization
  * - Creates Socket.IO server attached to HTTP server
@@ -301,12 +321,10 @@ export const io = new Server(server, {
   adapter: ioAdapter,
   cors: {
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, or same-origin requests)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      // Allow localhost with any port for development
       if (origin && origin.startsWith("http://localhost:")) {
         return callback(null, true);
       }
@@ -323,11 +341,9 @@ export const io = new Server(server, {
   allowUpgrades: true,
 });
 
-// Initialize your socket event handlers here (placeholder)
-// import { initializeMyHandlers } from "./socket-handlers/my-handler.js";
-// initializeMyHandlers(io);
+// Socket.IO: attach user from handshake.auth.userId + per-event rate limiting
+initializeSocketHandlers(io, redisClient);
 
-// --------------------- SERVER ---------------------
 server.listen(SERVER_PORT, () => {
   logger.info(
     `Server is running on http://localhost:${SERVER_PORT} [Env: ${process.env.NODE_ENV}]`

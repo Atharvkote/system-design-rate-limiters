@@ -1,199 +1,420 @@
-# Vite Node.js Starter Template
+# System Design : Rate Limiters
 
-   <div align="center">
-<img  height="400" width="400" src="https://techstack-generator.vercel.app/react-icon.svg"/>
-   </div>
+A production-grade distributed API rate limiting system with a real-time load simulator dashboard, built using React, Node.js, Express, Redis, and Socket.IO.
+
+This project demonstrates how modern backend systems implement and enforce rate limiting using Redis and industry-standard algorithms, while providing a frontend simulator to generate real traffic and visualize limiter behavior in real time.
+
+This repository serves both as:
+
+* A production-ready rate limiter implementation
+* A real-time rate limiter testing and visualization platform
+* A reference architecture for distributed rate limiting systems
 
 
-A full-stack starter template for building modern web applications with a React frontend and a Node.js/Express backend. This template provides a solid foundation with essential features like authentication, real-time communication, database integration, and security best practices.
+# Table of Contents
 
-## Features
+* Overview
+* Architecture
+* Tech Stack
+* Rate Limiting Strategies
+* System Components
+* Frontend Simulator
+* Backend Implementation
+* Redis Integration
+* Real-Time Monitoring
+* Installation
+* Running the Project
+* API Endpoints
+* Project Structure
+* How Rate Limiting Works
+* Production Considerations
+* License
 
-- **Frontend**: React application built with Vite for fast development and optimized builds
-- **Backend**: Node.js server with Express.js, featuring robust middleware and security
-- **Database**: MongoDB integration with Mongoose ODM
-- **Caching**: Redis for session management and rate limiting
-- **Real-time Communication**: Socket.IO for WebSocket support with Redis adapter
-- **UI Components**: Pre-configured shadcn/ui components with Tailwind CSS
-- **Authentication**: Ready-to-implement authentication system with rate limiting
-- **Security**: Helmet for security headers, CORS configuration, and rate limiting
-- **Logging**: Winston logger with Loki integration for centralized logging
-- **Development Tools**: ESLint, hot reloading, and optimized build processes
 
-## Tech Stack
+# Overview
 
-### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React | 19.2.0 | UI library |
-| Vite | 7.2.4 | Build tool and dev server |
-| Tailwind CSS | 4.1.17 | Utility-first CSS framework |
-| React Router | 7.10.1 | Client-side routing |
-| shadcn/ui | Latest | Component library |
-| Lucide React | 0.556.0 | Icon library |
+Modern APIs must protect themselves from abuse, overload, and malicious traffic. This project implements a distributed rate limiting system using Redis and provides a simulator to test limiter behavior under real load conditions.
 
-### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Node.js | Latest LTS | Runtime environment |
-| Express.js | 5.2.1 | Web framework |
-| MongoDB | Latest | NoSQL database |
-| Mongoose | 9.0.1 | ODM for MongoDB |
-| Redis | 5.8.2 | In-memory data store |
-| Socket.IO | 4.8.1 | Real-time communication |
-| Winston | 3.19.0 | Logging library |
-| Helmet | 8.1.0 | Security middleware |
-| CORS | 2.8.5 | Cross-origin resource sharing |
+The system includes:
 
-## Project Structure
+* Redis-based distributed limiter
+* Multiple limiter strategies
+* Real-time monitoring via Socket.IO
+* Load simulator capable of generating high request throughput
+* Professional frontend dashboard for visualization
 
-```bash
-vite-node-starter-template/
-├── client/                 # React frontend application
-│   ├── public/            # Static assets
-│   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   │   ├── layout/    # Layout components (nav, footer)
-│   │   │   └── ui/        # shadcn/ui components
-│   │   ├── pages/         # Page components
-│   │   │   └── auth/      # Authentication pages
-│   │   ├── store/         # State management (placeholder)
-│   │   ├── lib/           # Utility functions
-│   │   └── assets/        # Static assets
-│   ├── package.json
-│   ├── vite.config.js
-│   └── index.html
-├── server/                 # Node.js backend application
-│   ├── configs/           # Database configurations
-│   ├── controllers/       # Route controllers (placeholder)
-│   ├── middlewares/       # Custom middleware (placeholder)
-│   ├── models/            # Database models (placeholder)
-│   ├── routers/           # API routes (placeholder)
-│   ├── utils/             # Utility functions
-│   ├── logs/              # Log files (placeholder)
-│   ├── server.js          # Main server file
-│   └── package.json
-└── README.md              # Project documentation
+
+# Architecture
+
+High-level system flow:
+
+Client Simulator → Express Server → Redis → Limiter Decision → Response → Real-Time Update → Frontend Dashboard
+
+Detailed flow:
+
+1. Frontend simulator sends HTTP requests
+2. Express middleware checks Redis limiter state
+3. Redis validates request allowance
+4. Request is allowed or blocked
+5. Server emits real-time limiter event via Socket.IO
+6. Frontend updates dashboard instantly
+
+
+# Tech Stack
+
+Frontend:
+
+* React 19
+* Vite
+* TailwindCSS
+* shadcn/ui
+* Zustand
+* Axios
+* Socket.IO client
+* Recharts
+
+Backend:
+
+* Node.js
+* Express.js
+* Redis
+* rate-limiter-flexible
+* Socket.IO
+* MongoDB (optional logging)
+* Winston logger
+
+Infrastructure:
+
+* Redis for distributed limiter state
+* WebSockets for real-time monitoring
+
+
+# Rate Limiting Strategies Implemented
+
+This project supports multiple industry-standard rate limiting algorithms.
+
+
+## Token Bucket
+
+Concept:
+
+A bucket contains tokens representing allowed requests. Each request consumes a token. Tokens refill over time.
+
+Example:
+
+100 tokens maximum
+Refill rate: 10 tokens per second
+
+Advantages:
+
+* Allows burst traffic
+* Smooth request handling
+* Widely used in production
+
+Redis implementation concept:
+
+```js
+const limiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  points: 100,
+  duration: 60,
+});
 ```
 
-## Installation
 
-### Prerequisites
+## Fixed Window
 
-- Node.js (version 18 or higher)
-- MongoDB (local or cloud instance)
-- Redis (local or cloud instance)
-- pnpm (recommended) or npm
+Concept:
 
-### Setup
+Limits requests within fixed time windows.
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd vite-node-starter-template
-   ```
+Example:
 
-2. **Install dependencies**
+100 requests per minute
 
-   For the client:
-   ```bash
-   cd client
-   pnpm install
-   ```
+Advantages:
 
-   For the server:
-   ```bash
-   cd ../server
-   pnpm install
-   ```
+* Simple implementation
+* Low overhead
 
-3. **Environment Configuration**
+Disadvantage:
 
-   Copy the example environment files and configure them:
+* Allows burst at window boundaries
 
-   Client:
-   ```bash
-   cd client
-   cp .env.example .env
-   ```
 
-   Server:
-   ```bash
-   cd ../server
-   cp .env.example .env
-   ```
+## Sliding Window
 
-   Update the `.env` files with your configuration:
-   - Database connection strings
-   - Redis URLs
-   - JWT secrets
-   - API keys
+Concept:
 
-4. **Start the applications**
+Tracks requests continuously instead of fixed intervals.
 
-   Start the server:
-   ```bash
-   cd server
-   pnpm run dev
-   ```
+Advantages:
 
-   In a new terminal, start the client:
-   ```bash
-   cd client
-   pnpm run dev
-   ```
+* More accurate limiting
+* Prevents burst abuse
 
-   The client will be available at `http://localhost:5173` and the server at `http://localhost:5000`.
+Redis uses sorted sets internally.
 
-## Usage
 
-### Development
+## Distributed Rate Limiting
 
-- **Client**: Run `pnpm run dev` in the `client` directory for hot-reloaded development
-- **Server**: Run `pnpm run dev` in the `server` directory for auto-restarting server
-- **Linting**: Run `pnpm run lint` in the `client` directory to check code quality
+Redis ensures limiter state consistency across multiple servers.
 
-### Production
+This enables:
 
-- **Client**: Run `pnpm run build` to create an optimized production build
-- **Server**: Run `pnpm run start` to start the production server
+* Horizontal scaling
+* Load balancer compatibility
+* Cluster-safe limiting
 
-## API Endpoints
 
-The server provides the following default endpoints:
+# System Components
 
-- `GET /` - Welcome message
-- `GET /health` - Health check endpoint
+Frontend:
 
-Additional API routes can be added in the `server/routers/` directory and mounted in `server.js`.
+* Simulator dashboard
+* Load generator
+* Real-time charts
+* Event log viewer
 
-## Configuration
+Backend:
 
-### Server Configuration
+* Express server
+* Limiter middleware
+* Redis limiter engine
+* Socket.IO event emitter
 
-Key environment variables for the server:
+Redis:
 
-- `SERVER_PORT` - Server port (default: 5000)
-- `MONGODB_URI` - MongoDB connection string
-- `REDIS_URL` - Redis connection URL
-- `NODE_ENV` - Environment (development/production)
+* Stores limiter state
+* Tracks request consumption
+* Handles limiter resets
 
-### Client Configuration
 
-The client uses Vite's configuration in `client/vite.config.js` with path aliases and Tailwind CSS integration.
+# Frontend Simulator
 
-## Security Features
+The simulator generates configurable load against backend endpoints.
 
-- Helmet for security headers
-- CORS configuration with allowed origins
-- Rate limiting with Redis store
-- Input validation and sanitization
-- Secure cookie handling
+Capabilities:
 
-## Contributing
+* Configure requests per second
+* Configure total requests
+* Configure concurrency level
+* Select HTTP method
+* Monitor allowed and blocked requests
+* View real-time limiter state
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Simulator engine tracks:
+
+* Requests sent
+* Requests allowed
+* Requests blocked
+* Requests failed
+* Average response time
+
+Example simulator flow:
+
+```js
+setInterval(() => {
+  sendRequestBatch();
+}, 1000);
+```
+
+
+# Backend Implementation
+
+Limiter middleware example:
+
+```js
+const rateLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "api",
+  points: 100,
+  duration: 60,
+  blockDuration: 60,
+});
+
+const limiterMiddleware = async (req, res, next) => {
+  try {
+    await rateLimiter.consume(req.ip);
+    next();
+  } catch {
+    res.status(429).json({
+      error: "Rate limit exceeded"
+    });
+  }
+};
+```
+
+Limiter workflow:
+
+1. Request arrives
+2. Redis checks available points
+3. Request allowed or blocked
+4. Limiter state updated
+
+
+# Redis Integration
+
+Redis stores limiter state using keys:
+
+Example:
+
+```
+rate_limit:user_ip
+```
+
+Redis enables:
+
+* Fast lookup
+* Distributed consistency
+* Persistence
+* High performance
+
+
+# Real-Time Monitoring
+
+Socket.IO provides live limiter feedback.
+
+Server emits events:
+
+```js
+io.emit("rate-limit-event", {
+  allowed: true,
+  remaining: 45
+});
+```
+
+Frontend listens and updates dashboard instantly.
+
+
+# Installation
+
+Clone repository:
+
+```bash
+git clone <repository-url>
+cd api-rate-limiters
+```
+
+Install backend:
+
+```bash
+cd server
+pnpm install
+```
+
+Install frontend:
+
+```bash
+cd client
+pnpm install
+```
+
+
+# Running the Project
+
+Start Redis:
+
+```bash
+redis-server
+```
+
+Start backend:
+
+```bash
+cd server
+pnpm run dev
+```
+
+Start frontend:
+
+```bash
+cd client
+pnpm run dev
+```
+
+Open:
+
+```
+http://localhost:5173
+```
+
+
+# API Endpoints
+
+Health check:
+
+```
+GET /health
+```
+
+Test endpoint:
+
+```
+GET /api/test
+```
+
+Limiter status:
+
+```
+GET /api/rate-limit/status
+```
+
+
+# Project Structure
+
+```
+client/
+  src/
+    pages/
+    components/
+    services/
+    store/
+
+server/
+  middlewares/
+  routes/
+  services/
+  configs/
+```
+
+
+# How Rate Limiting Works
+
+1. Client sends request
+2. Express middleware intercepts
+3. Redis checks limiter state
+4. Request allowed or blocked
+5. State updated
+6. Frontend receives real-time update
+
+
+# Production Considerations
+
+This architecture supports:
+
+* Horizontal scaling
+* Load balancers
+* Distributed systems
+* High throughput APIs
+
+Recommended production improvements:
+
+* Redis cluster
+* Monitoring dashboard
+* Role-based limiter
+* Dynamic limiter configuration
+
+
+# Use Cases
+
+* API protection
+* Authentication protection
+* Public API limiting
+* SaaS platform infrastructure
+* Backend engineering reference
+
+
+# License
+
+ISC License

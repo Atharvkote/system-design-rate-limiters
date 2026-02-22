@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+:root {
+  --background: 0 0% 5%;
+  --foreground: 0 0% 95%;
+
+  --card: 0 0% 10%;
+  --card-foreground: 0 0% 95%;
+
+  --popover: 0 0% 12%;
+  --popover-foreground: 0 0% 95%;
+
+  /* FIXED PRIMARY */
+  --primary: 253 100% 58%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 95%;
+
+  --muted: 0 0% 25%;
+  --muted-foreground: 0 0% 70%;
+
+  /* Optional better accent match */
+  --accent: 260 100% 65%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 253 100% 58%;
+
+  --radius: 0.625rem;
+}
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 5%;
+    --card: 0 0% 97%;
+    --card-foreground: 0 0% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5%;
+    --primary: 200 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 90%;
+    --secondary-foreground: 0 0% 5%;
+    --muted: 0 0% 85%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 200 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 200 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Firefox Scrollbar */
+* {
+  scrollbar-color: hsl(var(--muted)) hsl(var(--background));
+  scrollbar-width: thin;
+}
+
+
+body {
+  font-family: "Quicksand", sans-serif;
+}
+
+
+html{
+  scroll-behavior: smooth;
+}
+
+/* Syntax Highlighting Theme Override */
+/* Customize atom-one-dark to match our dark theme */
+.hljs {
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Keywords, language constructs */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: #c678dd !important; /* Purple for keywords */
+}
+
+/* Strings */
+.hljs-string,
+.hljs-attr,
+.hljs-title {
+  color: #98c379 !important; /* Green for strings */
+}
+
+/* Numbers, boolean */
+.hljs-number,
+.hljs-literal {
+  color: #d19a66 !important; /* Orange for numbers */
+}
+
+/* Functions, method calls */
+.hljs-function .hljs-title {
+  color: #56b6f2 !important; /* Blue for function names */
+}
+
+/* Comments */
+.hljs-comment,
+.hljs-quote {
+  color: #5c6370 !important; /* Gray for comments */
+}
+
+/* Attributes */
+.hljs-attr {
+  color: #56b6f2 !important; /* Blue for attributes */
+}
+
+/* Object properties */
+.hljs-property {
+  color: #56b6f2 !important;
+}
+
+/* Special symbols */
+.hljs-built_in,
+.hljs-class {
+  color: #e5c07b !important; /* Yellow */
+}
