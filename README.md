@@ -1,246 +1,308 @@
-# System Design : Rate Limiters
+# System Design : Distributed Rate Limiter
 
-A production-grade distributed API rate limiting system with a real-time load simulator dashboard, built using React, Node.js, Express, Redis, and Socket.IO.
+![Image](https://res.cloudinary.com/dgz7hqbl9/image/upload/v1771770321/Screenshot_2026-02-22_195330_mviv9t.png)
 
-This project demonstrates how modern backend systems implement and enforce rate limiting using Redis and industry-standard algorithms, while providing a frontend simulator to generate real traffic and visualize limiter behavior in real time.
+A production-grade distributed API rate limiting system built using **Node.js, Express, Redis (Docker), Socket.IO, and React**, featuring a real-time load simulator and monitoring dashboard.
 
-This repository serves both as:
+This project demonstrates how modern backend systems enforce rate limiting in distributed environments using Redis as a centralized limiter store, while providing real-time observability of limiter behavior under load.
 
-* A production-ready rate limiter implementation
-* A real-time rate limiter testing and visualization platform
-* A reference architecture for distributed rate limiting systems
+This repository serves as:
 
+• A production-ready Redis-based rate limiter implementation
+• A real-time load simulator for stress testing limiter performance
+• A reference architecture for distributed backend systems
+• A teaching resource for understanding rate limiting internals
 
 # Table of Contents
 
-* Overview
-* Architecture
-* Tech Stack
-* Rate Limiting Strategies
-* System Components
-* Frontend Simulator
-* Backend Implementation
-* Redis Integration
-* Real-Time Monitoring
-* Installation
-* Running the Project
-* API Endpoints
-* Project Structure
-* How Rate Limiting Works
-* Production Considerations
-* License
-
+- [Overview](#overview)
+- [System Architecture](#system-architecture)
+- [Distributed Limiter Architecture](#distributed-limiter-architecture)
+- [Technology Stack](#technology-stack)
+- [Redis Limiter Internals](#redis-limiter-internals)
+- [Limiter Key Design](#limiter-key-design)
+- [Rate Limiting Algorithms Implemented](#rate-limiting-algorithms-implemented)
+  - [Token Bucket Algorithm](#token-bucket-algorithm)
+  - [Fixed Window Algorithm](#fixed-window-algorithm)
+  - [Sliding Window Algorithm](#sliding-window-algorithm)
+- [System Components](#system-components)
+- [Frontend Simulator](#frontend-simulator)
+- [Backend Implementation](#backend-implementation)
+- [Real-Time Monitoring](#real-time-monitoring)
+- [Docker and Redis Setup](#docker-and-redis-setup)
+- [Installation](#installation)
+- [Running the System](#running-the-system)
+- [API Endpoints](#api-endpoints)
+- [Project Structure](#project-structure)
+- [Request Lifecycle](#request-lifecycle)
+- [Horizontal Scaling Support](#horizontal-scaling-support)
+- [Production Considerations](#production-considerations)
+- [Use Cases](#use-cases)
+- [License](#license)
 
 # Overview
 
-Modern APIs must protect themselves from abuse, overload, and malicious traffic. This project implements a distributed rate limiting system using Redis and provides a simulator to test limiter behavior under real load conditions.
+Rate limiting is a critical mechanism used by backend systems to protect APIs from:
 
-The system includes:
+• Abuse
+• Denial-of-Service attacks
+• Excessive traffic
+• Resource exhaustion
+• Credential brute-forcing
 
-* Redis-based distributed limiter
-* Multiple limiter strategies
-* Real-time monitoring via Socket.IO
-* Load simulator capable of generating high request throughput
-* Professional frontend dashboard for visualization
+This system implements a distributed rate limiter using Redis, allowing multiple backend instances to share limiter state consistently.
 
+Key features:
 
-# Architecture
+• Distributed limiter using Redis
+• Multiple rate limiting algorithms
+• Real-time request monitoring
+• Load simulator capable of generating thousands of requests
+• WebSocket-based live limiter state visualization
+• Redis running inside Docker container
 
-High-level system flow:
+# System Architecture
 
-Client Simulator → Express Server → Redis → Limiter Decision → Response → Real-Time Update → Frontend Dashboard
+High-level architecture:
 
-Detailed flow:
+```mermaid
+graph TD
 
-1. Frontend simulator sends HTTP requests
-2. Express middleware checks Redis limiter state
-3. Redis validates request allowance
-4. Request is allowed or blocked
-5. Server emits real-time limiter event via Socket.IO
-6. Frontend updates dashboard instantly
+ClientSimulator[Load Simulator]
+BrowserUI[Dashboard UI]
 
+ExpressServer[Express Backend]
+SocketServer[Socket.IO Server]
 
-# Tech Stack
+Redis[(Redis - Docker Container)]
 
-Frontend:
+ClientSimulator -->|HTTP Requests| ExpressServer
+ExpressServer -->|Limiter Check| Redis
+ExpressServer -->|Emit Events| SocketServer
+SocketServer -->|WebSocket| BrowserUI
+```
 
-* React 19
-* Vite
-* TailwindCSS
-* shadcn/ui
-* Zustand
-* Axios
-* Socket.IO client
-* Recharts
+# Distributed Limiter Architecture
+
+This system uses Redis as a centralized limiter store.
+
+Without Redis:
+
+Each backend instance maintains its own limiter state → inconsistent enforcement.
+
+With Redis:
+
+All backend instances share limiter state → consistent enforcement.
+
+Example distributed deployment:
+
+```mermaid
+graph TD
+
+Client --> LoadBalancer
+
+LoadBalancer --> Server1
+LoadBalancer --> Server2
+LoadBalancer --> Server3
+
+Server1 --> Redis
+Server2 --> Redis
+Server3 --> Redis
+```
+
+Redis ensures:
+
+• Consistent limiter state
+• Cross-server synchronization
+• Horizontal scalability
+• High performance
+
+# Technology Stack
 
 Backend:
 
-* Node.js
-* Express.js
-* Redis
-* rate-limiter-flexible
-* Socket.IO
-* MongoDB (optional logging)
-* Winston logger
+• Node.js
+• Express.js
+• Redis
+• Socket.IO
+
+Frontend:
+
+• React
+• Vite
+• Tailwind CSS
 
 Infrastructure:
 
-* Redis for distributed limiter state
-* WebSockets for real-time monitoring
+• Docker
+• Docker Compose
 
+# Redis Limiter Internals
 
-# Rate Limiting Strategies Implemented
+Redis stores limiter state using keys.
 
-This project supports multiple industry-standard rate limiting algorithms.
+Example key:
 
+```
+rate_limit:ip:192.168.1.10
+```
 
-## Token Bucket
+Stored data includes:
+
+• Remaining request points
+• Reset timestamp
+• Block duration
+
+Redis is ideal because it provides:
+
+• In-memory performance
+• Atomic operations
+• Persistence support
+• High concurrency handling
+
+Limiter operations execute in O(1) time.
+
+# Limiter Key Design
+
+Limiter keys determine limiter scope.
+
+Examples:
+
+Per IP limiting:
+
+```
+rate_limit:ip:<ip_address>
+```
+
+Per user limiting:
+
+```
+rate_limit:user:<user_id>
+```
+
+Per route limiting:
+
+```
+rate_limit:route:<endpoint>
+```
+
+Combined limiter:
+
+```
+rate_limit:user:<user_id>:route:<endpoint>
+```
+
+This system can be easily extended to support all scopes.
+
+# Rate Limiting Algorithms Implemented
+
+## Token Bucket Algorithm
 
 Concept:
 
-A bucket contains tokens representing allowed requests. Each request consumes a token. Tokens refill over time.
+Each client has a token bucket.
+
+• Each request consumes one token
+• Tokens refill at fixed intervals
 
 Example:
 
-100 tokens maximum
-Refill rate: 10 tokens per second
+• Capacity: 100 tokens
+• Refill rate: 10 tokens per second
 
 Advantages:
 
-* Allows burst traffic
-* Smooth request handling
-* Widely used in production
+• Allows burst traffic
+• Smooth rate control
+• Production standard
 
-Redis implementation concept:
+Redis handles token tracking and refill timing.
 
-```js
-const limiter = new RateLimiterRedis({
-  storeClient: redisClient,
-  points: 100,
-  duration: 60,
-});
-```
-
-
-## Fixed Window
-
-Concept:
+## Fixed Window Algorithm
 
 Limits requests within fixed time windows.
 
 Example:
 
-100 requests per minute
-
-Advantages:
-
-* Simple implementation
-* Low overhead
+100 requests per minute.
 
 Disadvantage:
 
-* Allows burst at window boundaries
+Allows burst at window boundaries.
 
+## Sliding Window Algorithm
 
-## Sliding Window
+Tracks requests continuously using timestamps.
 
-Concept:
-
-Tracks requests continuously instead of fixed intervals.
-
-Advantages:
-
-* More accurate limiting
-* Prevents burst abuse
+Prevents burst abuse more effectively than fixed window.
 
 Redis uses sorted sets internally.
 
-
-## Distributed Rate Limiting
-
-Redis ensures limiter state consistency across multiple servers.
-
-This enables:
-
-* Horizontal scaling
-* Load balancer compatibility
-* Cluster-safe limiting
-
-
 # System Components
 
-Frontend:
+Backend Components:
 
-* Simulator dashboard
-* Load generator
-* Real-time charts
-* Event log viewer
+• Express HTTP server
+• Rate limiter middleware
+• Redis client
+• Socket.IO server
+• Limiter service
 
-Backend:
+Frontend Components:
 
-* Express server
-* Limiter middleware
-* Redis limiter engine
-* Socket.IO event emitter
+• Load simulator
+• Dashboard
+• Metrics visualization
+• Event log viewer
 
-Redis:
+Infrastructure:
 
-* Stores limiter state
-* Tracks request consumption
-* Handles limiter resets
-
+• Redis Docker container
+• Docker Compose orchestration
 
 # Frontend Simulator
+
+
+![Images](https://res.cloudinary.com/dgz7hqbl9/image/upload/v1771770667/Screenshot_2026-02-22_200021_ti0vrs.png)
 
 The simulator generates configurable load against backend endpoints.
 
 Capabilities:
 
-* Configure requests per second
-* Configure total requests
-* Configure concurrency level
-* Select HTTP method
-* Monitor allowed and blocked requests
-* View real-time limiter state
+• Configure requests per second
+• Configure concurrency
+• Configure total requests
+• Select HTTP method
+• View allowed vs blocked requests
+• View real-time limiter metrics
 
-Simulator engine tracks:
+Simulator tracks:
 
-* Requests sent
-* Requests allowed
-* Requests blocked
-* Requests failed
-* Average response time
+• Total requests
+• Allowed requests
+• Blocked requests
+• Failed requests
+• Average latency
 
-Example simulator flow:
-
-```js
-setInterval(() => {
-  sendRequestBatch();
-}, 1000);
-```
-
+Simulator uses asynchronous batching to simulate real client behavior.
 
 # Backend Implementation
 
-Limiter middleware example:
+Limiter middleware intercepts incoming requests:
 
 ```js
-const rateLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
-  keyPrefix: "api",
-  points: 100,
-  duration: 60,
-  blockDuration: 60,
-});
-
 const limiterMiddleware = async (req, res, next) => {
   try {
     await rateLimiter.consume(req.ip);
+
     next();
+
   } catch {
+
     res.status(429).json({
-      error: "Rate limit exceeded"
+      error: "Too Many Requests"
     });
+
   }
 };
 ```
@@ -248,44 +310,83 @@ const limiterMiddleware = async (req, res, next) => {
 Limiter workflow:
 
 1. Request arrives
-2. Redis checks available points
-3. Request allowed or blocked
-4. Limiter state updated
-
-
-# Redis Integration
-
-Redis stores limiter state using keys:
-
-Example:
-
-```
-rate_limit:user_ip
-```
-
-Redis enables:
-
-* Fast lookup
-* Distributed consistency
-* Persistence
-* High performance
-
+2. Middleware extracts client identifier
+3. Redis checks available points
+4. Redis atomically updates limiter state
+5. Request allowed or rejected
+6. Event emitted to monitoring dashboard
 
 # Real-Time Monitoring
 
-Socket.IO provides live limiter feedback.
+![Image](https://res.cloudinary.com/dgz7hqbl9/image/upload/v1771770667/Screenshot_2026-02-22_195947_nezkup.png)
 
-Server emits events:
+Socket.IO enables real-time monitoring.
+
+Server emits limiter events:
 
 ```js
 io.emit("rate-limit-event", {
+  ip: req.ip,
   allowed: true,
-  remaining: 45
+  remaining: 42,
+  timestamp: Date.now()
 });
 ```
 
-Frontend listens and updates dashboard instantly.
+Frontend receives and updates dashboard instantly.
 
+This enables real-time visualization of limiter behavior.
+
+# Docker and Redis Setup
+
+Redis runs inside Docker container managed by Docker Compose.
+
+docker-compose.yml:
+
+```yaml
+version: "3.9"
+
+services:
+
+  redis:
+
+    image: redis:7-alpine
+
+    container_name: rate-limiter-redis
+
+    ports:
+      - "6379:6379"
+
+    restart: always
+
+    volumes:
+      - redis-data:/data
+
+    command: redis-server --appendonly yes
+
+volumes:
+  redis-data:
+```
+
+Start Redis container:
+
+```bash
+docker compose up -d
+```
+
+Verify Redis is running:
+
+```bash
+docker ps
+```
+
+Expected output:
+
+```
+rate-limiter-redis
+```
+
+Redis persists data using Docker volume.
 
 # Installation
 
@@ -293,36 +394,39 @@ Clone repository:
 
 ```bash
 git clone <repository-url>
+
 cd api-rate-limiters
 ```
 
-Install backend:
+Install backend dependencies:
 
 ```bash
 cd server
+
 pnpm install
 ```
 
-Install frontend:
+Install frontend dependencies:
 
 ```bash
 cd client
+
 pnpm install
 ```
 
+# Running the System
 
-# Running the Project
-
-Start Redis:
+Start Redis container:
 
 ```bash
-redis-server
+docker compose up -d
 ```
 
-Start backend:
+Start backend server:
 
 ```bash
 cd server
+
 pnpm run dev
 ```
 
@@ -330,19 +434,19 @@ Start frontend:
 
 ```bash
 cd client
+
 pnpm run dev
 ```
 
-Open:
+Access dashboard:
 
 ```
 http://localhost:5173
 ```
 
-
 # API Endpoints
 
-Health check:
+Health endpoint:
 
 ```
 GET /health
@@ -354,66 +458,93 @@ Test endpoint:
 GET /api/test
 ```
 
-Limiter status:
+Rate limit status endpoint:
 
 ```
 GET /api/rate-limit/status
 ```
 
-
 # Project Structure
 
 ```
 client/
+
   src/
-    pages/
     components/
+    pages/
     services/
     store/
 
 server/
+
   middlewares/
-  routes/
+    rateLimiter.js
+
   services/
+    redisClient.js
+
+  routes/
+    apiRoutes.js
+
   configs/
+    redisConfig.js
 ```
 
+# Request Lifecycle
 
-# How Rate Limiting Works
+Complete request lifecycle:
 
 1. Client sends request
-2. Express middleware intercepts
-3. Redis checks limiter state
-4. Request allowed or blocked
-5. State updated
-6. Frontend receives real-time update
+2. Express receives request
+3. Limiter middleware executes
+4. Redis validates limiter state
+5. Redis updates request count
+6. Request allowed or rejected
+7. Socket.IO emits limiter event
+8. Dashboard updates in real time
 
+# Horizontal Scaling Support
+
+This architecture supports horizontal scaling.
+
+Multiple backend servers can share limiter state through Redis.
+
+Compatible with:
+
+• Load balancers
+• Kubernetes
+• Container clusters
+
+Redis acts as centralized limiter authority.
 
 # Production Considerations
 
-This architecture supports:
+Recommended improvements:
 
-* Horizontal scaling
-* Load balancers
-* Distributed systems
-* High throughput APIs
+Use Redis Cluster for high availability
 
-Recommended production improvements:
+Deploy backend using Docker containers
 
-* Redis cluster
-* Monitoring dashboard
-* Role-based limiter
-* Dynamic limiter configuration
+Add authentication-based limiter
 
+Add user-level limiter
+
+Add route-specific limiter
+
+Add admin monitoring dashboard
+
+Add limiter analytics storage
+
+Add failover handling
 
 # Use Cases
 
-* API protection
-* Authentication protection
-* Public API limiting
-* SaaS platform infrastructure
-* Backend engineering reference
-
+API protection
+Authentication protection
+Public API infrastructure
+SaaS backend systems
+Microservices architectures
+Distributed backend systems
 
 # License
 
