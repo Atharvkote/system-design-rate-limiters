@@ -44,6 +44,7 @@ import { formatTime } from '../utils/timeUtils.js';
 let intervalId = null;
 /** @type {AbortController | null} */
 let abortController = null;
+const baseURL = import.meta.env.VITE_SERVER_URL;
 
 /**
  * Starts the simulation.
@@ -76,7 +77,7 @@ export async function startSimulation(config, callbacks) {
   const shouldStop = () => abortController?.signal.aborted ?? true;
 
   const client = createApiClient({
-    baseURL: '',
+    baseURL: baseURL,
     timeout: 8000,
     headers,
   });
