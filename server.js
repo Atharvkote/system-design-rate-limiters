@@ -129,6 +129,8 @@ app.use(
   })
 );
 
+const PROD_API_SERVER_URL = 
+const PROD_VITE_SERVER_URL = 
 // CORS
 // Only allow specific origins when credentials are required. Do NOT use "*" when
 // `credentials: true` because browsers will reject responses that set
@@ -136,7 +138,10 @@ app.use(
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:9090",
-  "https://red-ease.vercel.app"
+
+  // Production
+  PROD_API_SERVER_URL,
+  PROD_VITE_SERVER_URL,
 ];
 app.use(
   cors({
