@@ -129,8 +129,8 @@ app.use(
   })
 );
 
-const PROD_API_SERVER_URL = 
-const PROD_VITE_SERVER_URL = 
+const PROD_API_SERVER_URL = process.env.PROD_API_SERVER_URL;
+const PROD_VITE_SERVER_URL = process.env.PROD_VITE_SERVER_URL;
 // CORS
 // Only allow specific origins when credentials are required. Do NOT use "*" when
 // `credentials: true` because browsers will reject responses that set
