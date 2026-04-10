@@ -136,6 +136,7 @@ app.use(
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:9090",
+  "https://red-ease.vercel.app"
 ];
 app.use(
   cors({
@@ -254,13 +255,19 @@ app.get("/", (req, res) => {
   res.send("Welcome to the API");
 });
 
-// Simple health check endpoint
 app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    uptimeSeconds: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    res.status(200).json({
+      status: "ok",
+      uptimeSeconds: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
 });
 
 // User-based rate limiters (fail open when Redis unavailable)
@@ -344,11 +351,11 @@ export const io = new Server(server, {
 // Socket.IO: attach user from handshake.auth.userId + per-event rate limiting
 initializeSocketHandlers(io, redisClient);
 
-server.listen(SERVER_PORT, () => {
+server.listen(SERVER_PORT, "0.0.0.0" ,() => {
   logger.info(
-    `Server is running on http://localhost:${SERVER_PORT} [Env: ${process.env.NODE_ENV}]`
+    `Server is running on railway/:${SERVER_PORT} [Env: PRODUCTION]`
   );
-  logger.info(`Server accessible at http://localhost:${SERVER_PORT}`);
+  logger.info(`Server accessible at railway/${SERVER_PORT}`);
 });
 
 // Handle server errors
