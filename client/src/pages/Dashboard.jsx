@@ -9,6 +9,7 @@ import { Activity, ArrowRight, Zap, Server } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card.jsx';
 import { Button } from '../components/ui/button.jsx';
 import { Helmet } from 'react-helmet-async';
+const baseURL = import.meta.env.VITE_SERVER_URL;
 
 export function Dashboard() {
   const [health, setHealth] = useState({ status: 'unknown', uptimeSeconds: 0, error: null });
@@ -18,7 +19,7 @@ export function Dashboard() {
 
     const fetchHealth = async () => {
       try {
-        const res = await fetch('http://localhost:5000/health');
+        const res = await fetch(`${baseURL}/health`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!cancelled) {
